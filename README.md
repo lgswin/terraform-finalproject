@@ -2,9 +2,114 @@
 
 This project sets up a complete AWS infrastructure using Terraform, including VPC, EC2, S3, and DynamoDB resources.
 
+## Infrastructure Diagram
+
+```
+    AWS Cloud (us-east-1)
+    +------------------+
+    |                  |
+    |  +------------+  |
+    |  |            |  |
+    |  |   VPC      |  |
+    |  | 10.0.0.0/16|  |
+    |  |            |  |
+    |  +------------+  |
+    |        |         |
+    |        |         |
+    |  +------------+  |
+    |  |            |  |
+    |  |  Public    |  |
+    |  |  Subnet    |  |
+    |  |10.0.1.0/24 |  |
+    |  |            |  |
+    |  +------------+  |
+    |        |         |
+    |        |         |
+    |  +------------+  |
+    |  |            |  |
+    |  |   EC2      |  |
+    |  | Instance   |  |
+    |  | (t2.micro) |  |
+    |  |            |  |
+    |  +------------+  |
+    |        |         |
+    |        |         |
+    |  +------------+  |
+    |  |            |  |
+    |  | Internet   |  |
+    |  | Gateway    |  |
+    |  |            |  |
+    |  +------------+  |
+    |                  |
+    +------------------+
+            |
+            |
+    +------------------+
+    |                  |
+    |  +------------+  |
+    |  |            |  |
+    |  |    S3      |  |
+    |  |   Bucket   |  |
+    |  |            |  |
+    |  +------------+  |
+    |                  |
+    |  +------------+  |
+    |  |            |  |
+    |  | DynamoDB   |  |
+    |  |   Table    |  |
+    |  |            |  |
+    |  +------------+  |
+    |                  |
+    +------------------+
+```
+
+### Infrastructure Components
+
+1. **VPC (Virtual Private Cloud)**
+   - CIDR: 10.0.0.0/16
+   - DNS hostnames and support enabled
+   - Container for all network resources
+
+2. **Public Subnet**
+   - CIDR: 10.0.1.0/24
+   - Availability Zone: us-east-1a
+   - Automatic public IP assignment enabled
+
+3. **EC2 Instance**
+   - Instance Type: t2.micro
+   - Amazon Linux 2 AMI
+   - Located in public subnet
+   - Connected to security group (SSH, HTTP, HTTPS)
+
+4. **Internet Gateway**
+   - Connected to VPC
+   - Enables internet communication
+   - Associated with public subnet's route table
+
+5. **S3 Bucket**
+   - Name: gunsu-private-bucket-8926937-state
+   - Versioning enabled
+   - Server-side encryption (AES256)
+   - Public access blocked
+
+6. **DynamoDB Table**
+   - Name: terraform-state-lock
+   - On-demand billing
+   - LockID as primary key
+   - State lock management
+
+### Security Configuration
+- Environment tags applied to all resources
+- S3 bucket public access blocked
+- EC2 security group port restrictions
+- State file encryption
+
+This infrastructure is managed by Terraform, with state files stored in S3 and lock management handled by DynamoDB.
+
 ## 1. Backend Configuration (backend.tf)
 
-### S3 Backend Setup
+The backend configuration defines how Terraform state is stored and managed.
+
 ```hcl
 terraform {
   required_version = ">= 1.0.0"
@@ -26,18 +131,21 @@ terraform {
 }
 ```
 
-- **required_version**: Requires Terraform version 1.0.0 or higher
-- **backend "s3"**: 
-  - `bucket`: S3 bucket name for storing state file
-  - `key`: Path and name of the state file
-  - `region`: AWS region
-  - `encrypt`: Enable state file encryption
+Key components:
+- `required_version`: Ensures Terraform version 1.0.0 or higher
+- `backend "s3"`: Configures S3 as the state storage backend
+  - `bucket`: S3 bucket for state file storage
+  - `key`: State file path and name
+  - `region`: AWS region for the bucket
+  - `encrypt`: Enables state file encryption
   - `dynamodb_table`: DynamoDB table for state locking
-- **required_providers**: Specifies AWS provider version 5.0 or higher
+- `required_providers`: Specifies AWS provider version 5.0 or higher
 
 ## 2. S3 Bucket Configuration (bucket.tf)
 
-### S3 Bucket Creation
+S3 bucket configuration for secure state storage.
+
+### Bucket Creation
 ```hcl
 resource "aws_s3_bucket" "terraform_state" {
   bucket = var.bucket_name
@@ -47,8 +155,10 @@ resource "aws_s3_bucket" "terraform_state" {
   }
 }
 ```
-- Creates S3 bucket with specified name
-- Adds tags for resource identification (name, environment)
+This creates an S3 bucket with:
+- Custom bucket name from variables
+- Resource identification tags
+- Environment-specific tagging
 
 ### Versioning Configuration
 ```hcl
@@ -59,9 +169,10 @@ resource "aws_s3_bucket_versioning" "terraform_state" {
   }
 }
 ```
-- Enables versioning on the bucket
-- Tracks all changes to the state file
-- Protects against accidental deletion or modification
+Enables versioning to:
+- Track all state file changes
+- Prevent accidental deletion
+- Maintain state history
 
 ### Server-Side Encryption
 ```hcl
@@ -74,9 +185,10 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "terraform_state" 
   }
 }
 ```
-- Applies server-side encryption using AES256 algorithm
-- Enhances security of stored data
-- Manages keys through AWS KMS
+Configures encryption with:
+- AES256 algorithm
+- AWS KMS key management
+- Automatic encryption of all objects
 
 ### Public Access Block
 ```hcl
@@ -89,14 +201,16 @@ resource "aws_s3_bucket_public_access_block" "terraform_state" {
   restrict_public_buckets = true
 }
 ```
-- Blocks all public access
-- Blocks public access through bucket policies
-- Ignores public access through ACLs
-- Restricts public buckets
+Secures the bucket by:
+- Blocking all public access
+- Preventing public bucket policies
+- Ignoring public ACLs
+- Restricting public bucket access
 
 ## 3. DynamoDB Table Configuration (dynamodb.tf)
 
-### State Lock Table
+DynamoDB table for state locking.
+
 ```hcl
 resource "aws_dynamodb_table" "terraform_state_lock" {
   name           = var.dynamodb_table_name
@@ -114,12 +228,15 @@ resource "aws_dynamodb_table" "terraform_state_lock" {
   }
 }
 ```
-- Creates DynamoDB table for state locking
-- Uses on-demand billing (pay per usage)
-- Sets LockID as the primary key
-- Adds tags for resource identification
+Creates a DynamoDB table with:
+- On-demand billing
+- LockID as primary key
+- String type attribute
+- Resource identification tags
 
 ## 4. EC2 Configuration (ec2.tf)
+
+EC2 instance and security group configuration.
 
 ### Security Group
 ```hcl
@@ -162,10 +279,12 @@ resource "aws_security_group" "ec2_sg" {
   }
 }
 ```
-- Creates security group for EC2 instance
-- Allows inbound traffic on SSH(22), HTTP(80), and HTTPS(443) ports
-- Allows all outbound traffic
-- Adds tags for resource identification
+Configures security group with:
+- SSH access (port 22)
+- HTTP access (port 80)
+- HTTPS access (port 443)
+- All outbound traffic allowed
+- Resource identification tags
 
 ### EC2 Instance
 ```hcl
@@ -182,13 +301,16 @@ resource "aws_instance" "ec2" {
   }
 }
 ```
-- Creates EC2 instance with specified AMI and instance type
-- Places in public subnet
-- Connects security group
-- Assigns public IP address
-- Adds tags for resource identification
+Creates EC2 instance with:
+- Specified AMI and instance type
+- Public subnet placement
+- Security group attachment
+- Public IP assignment
+- Resource identification tags
 
 ## 5. VPC Configuration (vpc.tf)
+
+VPC and networking configuration.
 
 ### VPC Creation
 ```hcl
@@ -203,9 +325,11 @@ resource "aws_vpc" "main" {
   }
 }
 ```
-- Creates VPC with specified CIDR block
-- Enables DNS hostnames and support
-- Adds tags for resource identification
+Creates VPC with:
+- Custom CIDR block
+- DNS support enabled
+- DNS hostnames enabled
+- Resource identification tags
 
 ### Public Subnet
 ```hcl
@@ -222,10 +346,12 @@ resource "aws_subnet" "public" {
   }
 }
 ```
-- Creates public subnet within VPC
-- Places in specified availability zone
-- Enables automatic public IP assignment
-- Adds tags for resource identification
+Creates public subnet with:
+- VPC association
+- Custom CIDR block
+- Availability zone placement
+- Automatic public IP assignment
+- Resource identification tags
 
 ### Internet Gateway
 ```hcl
@@ -238,9 +364,9 @@ resource "aws_internet_gateway" "main" {
   }
 }
 ```
-- Connects internet gateway to VPC
-- Enables communication with the internet
-- Adds tags for resource identification
+Creates internet gateway with:
+- VPC attachment
+- Resource identification tags
 
 ### Route Table
 ```hcl
@@ -258,9 +384,10 @@ resource "aws_route_table" "public" {
   }
 }
 ```
-- Creates public routing table
-- Sets up routing to internet (0.0.0.0/0 -> IGW)
-- Adds tags for resource identification
+Creates route table with:
+- VPC association
+- Internet route (0.0.0.0/0)
+- Resource identification tags
 
 ### Route Table Association
 ```hcl
@@ -269,10 +396,13 @@ resource "aws_route_table_association" "public" {
   route_table_id = aws_route_table.public.id
 }
 ```
-- Associates public subnet with routing table
-- Routes subnet traffic to internet gateway
+Associates public subnet with:
+- Route table
+- Internet gateway routing
 
 ## 6. Variables Definition (variables.tf)
+
+Variable declarations and types.
 
 ### AWS Region
 ```hcl
@@ -282,7 +412,8 @@ variable "aws_region" {
   default     = "us-east-1"
 }
 ```
-- Specifies AWS region
+Defines AWS region with:
+- String type
 - Default value: us-east-1
 
 ### Bucket Name
@@ -292,8 +423,9 @@ variable "bucket_name" {
   type        = string
 }
 ```
-- Specifies S3 bucket name
-- Required input variable
+Defines S3 bucket name as:
+- Required string variable
+- No default value
 
 ### DynamoDB Table Name
 ```hcl
@@ -302,8 +434,9 @@ variable "dynamodb_table_name" {
   type        = string
 }
 ```
-- Specifies DynamoDB table name
-- Required input variable
+Defines DynamoDB table name as:
+- Required string variable
+- No default value
 
 ### Environment
 ```hcl
@@ -313,7 +446,8 @@ variable "environment" {
   default     = "dev"
 }
 ```
-- Specifies environment name
+Defines environment with:
+- String type
 - Default value: dev
 
 ### Instance Type
@@ -324,7 +458,8 @@ variable "instance_type" {
   default     = "t2.micro"
 }
 ```
-- Specifies EC2 instance type
+Defines EC2 instance type with:
+- String type
 - Default value: t2.micro (free tier)
 
 ### AMI ID
@@ -334,8 +469,9 @@ variable "ami_id" {
   type        = string
 }
 ```
-- Specifies AMI ID for EC2 instance
-- Required input variable
+Defines AMI ID as:
+- Required string variable
+- No default value
 
 ### VPC CIDR
 ```hcl
@@ -345,7 +481,8 @@ variable "vpc_cidr" {
   default     = "10.0.0.0/16"
 }
 ```
-- Specifies CIDR block for VPC
+Defines VPC CIDR with:
+- String type
 - Default value: 10.0.0.0/16
 
 ### Public Subnet CIDR
@@ -356,12 +493,14 @@ variable "public_subnet_cidr" {
   default     = "10.0.1.0/24"
 }
 ```
-- Specifies CIDR block for public subnet
+Defines public subnet CIDR with:
+- String type
 - Default value: 10.0.1.0/24
 
 ## 7. Variable Values (terraform.tfvars)
 
-### Resource Configuration
+Actual values for the defined variables.
+
 ```hcl
 aws_region           = "us-east-1"
 bucket_name          = "gunsu-private-bucket-8926937-state"
@@ -372,6 +511,7 @@ ami_id               = "ami-0c7217cdde317cfec"  # Amazon Linux 2 AMI
 vpc_cidr            = "10.0.0.0/16"
 public_subnet_cidr  = "10.0.1.0/24"
 ```
+Sets values for:
 - AWS Region: us-east-1
 - S3 Bucket Name: gunsu-private-bucket-8926937-state
 - DynamoDB Table Name: terraform-state-lock
@@ -391,16 +531,16 @@ public_subnet_cidr  = "10.0.1.0/24"
    }
    ```
 
-2. Initialize Terraform with local backend:
+2. Initialize Terraform:
    ```bash
-   terraform init -var-file=vars.tfvars
+   terraform init
    ```
 
-3. Apply the configuration to create initial resources:
+3. Apply the configuration:
    ```bash
-   terraform apply -var-file=vars.tfvars
+   terraform apply
    ```
-   This will create:
+   This creates:
    - S3 bucket for state storage
    - DynamoDB table for state locking
    - VPC and networking components
@@ -422,20 +562,20 @@ public_subnet_cidr  = "10.0.1.0/24"
 
 2. Migrate state to S3:
    ```bash
-   terraform init -migrate-state -var-file=vars.tfvars
+   terraform init -migrate-state
    ```
    - When prompted, type 'yes' to confirm migration
 
 ### Phase 3: Regular Operations
-After migration, use these commands for regular operations:
+After migration, use these commands:
 ```bash
-terraform init -var-file=vars.tfvars
-terraform plan -var-file=vars.tfvars
-terraform apply -var-file=vars.tfvars
+terraform init
+terraform plan
+terraform apply
 ```
 
 ## AWS Console Verification
-After deployment, verify the infrastructure in AWS Console:
+After deployment, verify in AWS Console:
 1. **S3**: Check `gunsu-private-bucket-8926937-state` bucket
 2. **DynamoDB**: Verify `terraform-state-lock` table
 3. **VPC**: Inspect `gunsu-vpc` and its components
