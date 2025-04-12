@@ -9,7 +9,7 @@ student_id    = "8926937"
 #    - Create new access key
 #    - Delete old access keys
 # 3. For security, rotate these keys periodically
-aws_access_key     = "AKIAST5TF25EGSPEPIXQ"
-aws_secret_key     = "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"
+aws_access_key     = "Access Key ID"
+aws_secret_key     = "Secret Access Key"
 aws_session_token  = ""
 

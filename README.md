@@ -1,21 +1,3 @@
-# Terraform Project Guide
-
-This project demonstrates how to code and manage AWS infrastructure using Terraform.
-
-## Table of Contents
-
-- [Terraform Project Guide](#terraform-project-guide)
-  - [Table of Contents](#table-of-contents)
-  - [Project Overview](#project-overview)
-  - [Required Tools](#required-tools)
-  - [Project Structure](#project-structure)
-  - [Initial Setup](#initial-setup)
-  - [S3 Bucket Creation](#s3-bucket-creation)
-  - [Backend Migration](#backend-migration)
-  - [Infrastructure Creation](#infrastructure-creation)
-  - [Resource Deletion](#resource-deletion)
-  - [Troubleshooting](#troubleshooting)
-
 ## Project Overview
 
 This project creates the following AWS resources:
@@ -26,11 +8,6 @@ This project creates the following AWS resources:
 - EC2 instance
 - Security groups
 
-## Required Tools
-
-- [Terraform](https://www.terraform.io/downloads.html) (v1.0.0 or higher)
-- [AWS CLI](https://aws.amazon.com/cli/)
-- AWS account and IAM user (with appropriate permissions)
 
 ## Project Structure
 
