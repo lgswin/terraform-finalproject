@@ -3,16 +3,6 @@ variable "region" {
     type = string
 }
 
-variable "bucket_count" {
-    description = "number of buckets"
-    type = number
-}
-
-variable "file_path" {
-  description = "File path"
-  type        = string
-}
-
 variable "bucket_prefix" {
     description = "Prefix for the bucket names"
     type        = string
@@ -73,10 +63,4 @@ variable "instance_type" {
   description = "Instance type for the EC2 instance"
   type        = string
   default     = "t2.micro"
-}
-
-variable "key_name" {
-  description = "Name of the SSH key pair to use for the EC2 instance"
-  type        = string
-  default     = "terraform-key"
 }

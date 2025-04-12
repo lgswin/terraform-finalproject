@@ -1,23 +1,6 @@
-# Create DynamoDB table for state locking
-resource "aws_dynamodb_table" "terraform_state_lock" {
-  name           = "terraform-state-lock"
-  billing_mode   = "PAY_PER_REQUEST"
-  hash_key       = "LockID"
-
-  attribute {
-    name = "LockID"
-    type = "S"
-  }
-
-  tags = {
-    Name        = "Terraform State Lock Table"
-    Description = "DynamoDB table for Terraform state locking"
-  }
-}
-
 # Create S3 bucket for Terraform state file
 resource "aws_s3_bucket" "terraform_state" {
-  bucket = "${var.bucket_prefix}-${var.student_id}-state"
+  bucket = "gunsu-private-bucket-8926937-state"
 }
 
 # Enable versioning for state file

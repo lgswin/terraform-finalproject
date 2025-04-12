@@ -1,7 +1,13 @@
 terraform {
   required_version = ">= 1.0.0"
   
-  backend "local" {}
+  # S3 백엔드 사용
+  backend "s3" {
+    bucket         = "gunsu-private-bucket-8926937-state"
+    key            = "terraform.tfstate"
+    region         = "us-east-1"
+    encrypt        = true
+  }
 
   # Required providers
   required_providers {
@@ -11,3 +17,7 @@ terraform {
     }
   }
 } 
+
+  #  terraform {
+  #    backend "local" {}
+  #  }
