@@ -51,13 +51,7 @@ This project creates the following AWS resources:
    }
    ```
 
-3. **Why create S3 bucket first?**
-   - I created the S3 bucket first because it will be used as the backend for storing the Terraform state file.
-   - This approach solves a "chicken and egg" problem: I needed the S3 bucket to store the state file, but I can't create the bucket if we're already using it as a backend.
-   - By creating the bucket first with a local backend, then migrating to the S3 backend, I ensure a smooth transition without state file conflicts.
-
-
-4. **Initialize Terraform**
+3. **Initialize Terraform**
    ```bash
    terraform init
    ```
@@ -70,8 +64,12 @@ This project creates the following AWS resources:
    ```bash
    terraform apply -target=aws_s3_bucket.terraform_state
    ```
+2. **Why create S3 bucket first?**
+   - I created the S3 bucket first because it will be used as the backend for storing the Terraform state file.
+   - This approach solves a "chicken and egg" problem: I needed the S3 bucket to store the state file, but I can't create the bucket if we're already using it as a backend.
+   - By creating the bucket first with a local backend, then migrating to the S3 backend, I ensure a smooth transition without state file conflicts.
 
-2. **Verify S3 bucket settings**
+3. **Verify S3 bucket settings**
    - Server-side encryption enabled
    - Public access blocked
    - Versioning enabled
